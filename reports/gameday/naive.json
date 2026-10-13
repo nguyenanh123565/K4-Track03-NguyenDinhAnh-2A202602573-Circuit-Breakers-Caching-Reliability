@@ -79,7 +79,7 @@
       "primary_share_after_restore_min": true
     },
     "pass": false,
-    "runtime_s": 0.29
+    "runtime_s": 0.31
   },
   "G3_brownout": {
     "scenario": "G3_brownout",
@@ -116,7 +116,7 @@
       "amplification_max": true
     },
     "pass": false,
-    "runtime_s": 0.05
+    "runtime_s": 0.04
   },
   "G4_slow_region": {
     "scenario": "G4_slow_region",
@@ -194,7 +194,7 @@
       "availability_min": false
     },
     "pass": false,
-    "runtime_s": 0.44
+    "runtime_s": 0.41
   },
   "G6_provider_outage": {
     "scenario": "G6_provider_outage",
@@ -234,6 +234,6 @@
       "primary_share_after_restore_min": true
     },
     "pass": false,
-    "runtime_s": 0.34
+    "runtime_s": 0.43
   }
 }
