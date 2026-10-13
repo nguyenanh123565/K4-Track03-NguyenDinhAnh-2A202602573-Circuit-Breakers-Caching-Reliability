@@ -4,13 +4,32 @@
 
 **MSSV:** 2A202602573
 
-**Commit implementation/evidence:** `e4ec88e`
+**Commit repo tại thời điểm đối chiếu report:** `69dc1a7416d21849781d1d82f53f1ca63a34b30a`
 
 **Điểm tự động:** 84 / 88; 4 điểm SLO hidden chưa được chấm. Report/postmortem 12 điểm do giảng viên chấm tay.
 
-Commit trên chứa implementation và evidence đã kiểm chứng; commit tiếp theo chỉ cập nhật metadata report. Hash commit bài nộp xem `git log -1`.
+Commit trên là HEAD khi đọc lại các artifact để hoàn thiện report; implementation/evidence gốc nằm trong commit `e4ec88e`. Việc chỉnh report không thay đổi implementation hoặc cấu hình thí nghiệm.
 
 Đã đọc `docs/RUBRIC.md` và điền đủ tám mục của `REPORT_TEMPLATE.md`. Evidence chính dùng seed 25. `scoreboard_multiseed.json` kiểm chứng thêm seed 26,27; mọi check public PASS trên cả ba seed. Không có dữ liệu hidden để kết luận về hidden score.
+
+| Phần | Điểm local | Phạm vi bằng chứng |
+|---|---:|---|
+| A | 12/12 | 21/21 unit tests |
+| B | 12/12 | 13/13 unit tests |
+| C | 30/30 | 11/11 unit tests và G1–G6 PASS |
+| D | 12/12 | 7/7 unit tests và workflow gameday PASS |
+| E | 8/12 | 7/7 unit tests và SLO public PASS; 4 điểm hidden chưa chấm |
+| G | 10/10 | 17/17 unit tests và C1 PASS |
+| Automatic local | 84/88 | `scoreboard.json`; `slo_hidden.pass=null`, không tự nhận hidden PASS |
+
+Nguồn số liệu có thể mở trực tiếp từ report:
+
+- [Scoreboard local](scoreboard.json), [kiểm tra ba seed](scoreboard_multiseed.json).
+- [Game Day naive](gameday/naive.json), [Game Day resilient](gameday/resilient.json), [CSV G2 naive](gameday/naive_G2_overload_storm_timeseries.csv).
+- [Workflow](workflows.json), [SLO public và error budget](slo.json).
+- [Cache baseline](cache/resilient.json), [cache chính](cache/cached.json), [toàn bộ thí nghiệm](experiments.json).
+
+Các metric trong bảng là giá trị artifact đã lưu, không phải kết quả suy đoán. Availability là tỉ lệ, ví dụ 0.9634 tương ứng 96.34%; cost dùng đơn vị chi phí mô phỏng, không quy đổi thành tiền thật. Amplification = physical attempts / logical calls, retry_ratio = same-provider retries / logical calls. FAQ hit ratio dùng tổng FAQ turns, bao gồm personal request không được cache.
 
 ## 1. Kết quả Game Day
 
@@ -46,9 +65,9 @@ Các giá trị là cấu hình nộp; lý do liên hệ kết quả tổng th�
 | quota_cooldown_s | 300 | Quota là lỗi billing, không retry; G5 quota bắt đầu t=300 kéo đến cuối t=540, cooldown 300s tránh hỏi lại liên tục. G5 không retry client error. |
 | breaker.window_size / min_calls | 20 / 10 | Chỉ giữ 20 kết quả, cần 10 trước trip; tránh trip từ ít mẫu nhưng loại lịch sử healthy cũ. G2 hồi phục metric 0s. |
 | failure_rate_threshold | 0.5 | Trip tại ≥50%; G3 30% brownout không nhất thiết cắt primary ngay, được retry/fallback với 1.0 availability. |
-| slow_call_s | 5 | Success ≥5s vẫn xấu; G4 extra latency 5s được phát hiện, p95 resilient 5.419 so với naive 13.764. Timeout 4s cũng bắt degradation trước success. |
-| slow_rate_threshold | 0.6 | Trip nếu ≥60% kết quả là slow success, tránh một tail riêng lẻ mở breaker. G4 PASS. |
-| open_duration_s | 10 | Nghỉ 10s trước probe thay vì gửi tải liên tục; G2/G6 primary share sau restore đạt check ≥0.8. |
+| slow_call_s | 5 | Breaker coi success ≥5s là xấu. Với timeout nộp 4s, attempt sẽ timeout trước ngưỡng này nên không gán cải thiện G4 cho slow success: p95 5.419 so với naive 13.764 là kết quả phối hợp timeout/breaker/fallback. Unit test kiểm chứng riêng slow success. |
+| slow_rate_threshold | 0.6 | Trip nếu ≥60% kết quả là slow success, tránh một tail riêng lẻ mở breaker. G4 PASS nhưng chưa có local evidence tách riêng tác động của ngưỡng 0.6 trong cấu hình timeout 4s. |
+| open_duration_s | 10 | Nghỉ 10s trước probe thay vì gửi tải liên tục; G2/G6 primary share sau restore thực tế đều 1.0, vượt check ≥0.8. |
 | half_open_max_probes / successes | 2 / 2 | Tối đa 2 probe đồng thời, 2 success nhanh để CLOSED; một fail/slow mở lại. 13 breaker tests PASS. |
 | fallback_order | alpha → alpha-eu → beta → gamma-mini | Thử cùng model khác region trước đổi family; tool chỉ được dùng ba provider đầu. G6 incompatible_routes=0, bỏ lọc tạo 269 route sai. |
 
@@ -77,6 +96,8 @@ Theo template, đặt min_calls=1000000000, attempts/provider=5 để breaker kh
 | G3 | off | 1.0000 | 1.163 | 0.160 | 4.809 | 0 |
 
 Budget giảm retry G2 từ 0.544 xuống 0.062 và giảm p95 19.504→11.911s khi breaker cấu hình sai. Budget-off G2 có 47 GiveUp deadline, budget-on có 1 no_provider_available; recovery đều 0 theo định nghĩa metric nên không chứng minh chênh recovery. Với breaker đúng, config chính G2 amplification 1.034 và retry 0.007 còn thấp hơn. Breaker kiểm soát health từng provider, budget giới hạn tải retry toàn client; cần cả hai để phòng sự cố trước khi đủ mẫu trip hoặc khi cấu hình breaker sai.
+
+Metric provider cũng phản ánh tải thêm: G2 budget-off có 6508 attempts alpha, 864 beta và 683 rate-limit errors; budget-on tương ứng 5015, 349 và 56. Timeout giảm từ 1874 xuống 874. Các số này lấy từ `attempts_by_provider`/`errors_by_code` trong `experiments.json`; artifact không lưu lịch sử transition của breaker cho từng thí nghiệm, nên chưa có local evidence về số lần OPEN/HALF_OPEN cụ thể.
 
 ### 3.2 Timeout 30s, G4 làm đối chứng
 
@@ -124,7 +145,7 @@ Nguồn `slo.json`; độ trễ tính bằng phút.
 
 Burn-rate 3 pages, 1 ticket, 0 false page; naive 7 pages, 0 ticket, 3 false page. Tất cả detection delay của burn-rate nằm trong label max-delay. Với 25901755 requests/30 ngày, allowed_bad=(1−0.995)×requests=129508.8 (hiển thị làm tròn); thực tế 55618 bad, availability 0.997853. Budget consumed 42.95%, remaining 57.05%, freeze_releases=False vì budget chưa cạn; tính tỉ lệ trước làm tròn.
 
-small_bump 20 phút ở 12% lỗi tự kết thúc; 1h trung bình xấp xỉ 4% tương ứng 8x dưới 14.4x, 6h dưới 6x. Nó chưa đủ tốc độ tiêu budget để đánh thức on-call, nhưng vẫn cần quan sát và điều tra nếu lặp lại. Đếm bad/request có trọng số lưu lượng, tránh night_spike ít traffic gây page chỉ vì tỷ lệ ngắn cao.
+small_bump 20 phút ở 12% lỗi tự kết thúc. Tính lại trực tiếp từ `data/sli_30d.csv` trong khoảng từ start_min=39540 đến sau khi incident rời từng rolling window: burn rate 1h tối đa 8.2254x, dưới 14.4x; 6h tối đa 1.9105x, dưới 6x. Khoảng incident [39540,39560) có 1794 bad requests. Vì cửa sổ dài chưa đạt ngưỡng, rule không page dù cửa sổ ngắn có spike; vẫn cần quan sát và điều tra nếu lặp lại. Đếm bad/request có trọng số lưu lượng, tránh night_spike ít traffic gây page chỉ vì tỷ lệ ngắn cao.
 
 ## 6. Postmortem blameless — G2 với naive client
 
@@ -222,3 +243,23 @@ Giữ threshold 0.92/TTL30 và tắt stale: FAQ availability giảm 0.9634→0.8
 - Reproduce: `python -m pytest tests/test_errors_retry.py tests/test_breaker.py tests/test_client.py tests/test_cache.py tests/test_executor.py tests/test_alerting.py -q`; các script run_gameday/run_workflows/run_slo/grade theo Makefile; plot dùng `MPLBACKEND=Agg` trong môi trường không có UI.
 - Repo hiện tại `K4-Track03-NguyenDinhAnh-2A202602573-Circuit-Breakers-Caching-Reliability`; tên yêu cầu `Track3-Day25-2A202602573-Nguyễn-Đình-Anh`. Chưa rename remote/history.
 - Trạng thái push và hash commit nộp được xác minh bằng Git sau khi commit; không coi việc tạo report là bằng chứng đã push.
+
+### Đối chiếu rubric lần cuối
+
+| Tiêu chí chấm tay | Nội dung đã điền | Evidence |
+|---|---|---|
+| Game Day + cấu hình (2 điểm) | Mục 1 đủ 12 dòng, mục 2 giải thích toàn bộ tham số client bằng số | gameday JSON, gameday.yaml, unit-test scoreboard |
+| Ba thí nghiệm (2 điểm) | Mục 3 budget on/off G2/G3, timeout 4/30 G4/G6, bỏ capability filter G6 | experiments.json và script tái lập |
+| Workflow + alerting (1 điểm) | Mục 4 key/checkpoint/resume, mục 5 detection và budget/freeze | workflows.json, slo.json, scoreboard.json |
+| Cache (2 điểm) | Mục 8 baseline/cached, threshold/TTL/stale, scope/privacy/invalidation/LRU và alert khi stale | cache JSON, experiments.json, cache.py |
+| Postmortem (5 điểm) | Mục 6 impact, 9 mốc CSV, detection, trigger/root cause, metastability, 4 action items có owner/check | CSV G2, plot G2, naive.json, providers.py |
+
+Đây là đối chiếu nội dung, không tự chấm 12 điểm report. Không có mục trống hoặc chuỗi đánh dấu chờ điền.
+
+### Phạm vi chưa có local evidence
+
+- **SLO hidden và băng hidden:** không có dataset/kết quả giảng viên trong repo; chỉ xác nhận public local. Part E hiện 8/12, tổng local 84/88.
+- **Detection online G2:** chưa có log thời điểm page/ack của on-call; mục 6 chỉ dùng triệu chứng trong CSV và không gán delay SLO public cho G2.
+- **Queue length và breaker transitions trong thí nghiệm:** JSON/CSV hiện không xuất hai chuỗi này; cơ chế queue được giải thích từ source, không bịa số queue hoặc số lần transition.
+- **Capacity cache và tuning từng tham số:** chưa có benchmark memory/peak entries hay sweep độc lập mọi tham số breaker; max_entries=500 là giới hạn hợp lý cho lab, không tuyên bố tối ưu. Thí nghiệm cache có metric theo reason nhưng không có số nhầm theo từng cặp câu hỏi.
+- **Error budget tháng riêng cho G2:** không có chuỗi traffic tháng tương ứng băng G2; 2.4788% ở mục 6 là phép ngoại suy có ghi giả định 4 turns/s, 30 ngày, SLO 99.5%, không phải metric quan sát của tháng thật.
