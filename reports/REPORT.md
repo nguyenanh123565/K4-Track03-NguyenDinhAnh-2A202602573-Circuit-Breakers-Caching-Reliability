@@ -1,11 +1,14 @@
 # Lab 25B — Report
 
-**Họ tên / nhóm:** Nguyễn Đình Anh / cá nhân  
-**MSSV:** 2A202602573  
-**Commit nền tại thời điểm chạy kiểm chứng:** `18cc181d9577bd2e4c45ab64eb6e23da86c20030`  
+**Họ tên / nhóm:** Nguyễn Đình Anh / cá nhân
+
+**MSSV:** 2A202602573
+
+**Commit implementation/evidence:** `e4ec88e`
+
 **Điểm tự động:** 84 / 88; 4 điểm SLO hidden chưa được chấm. Report/postmortem 12 điểm do giảng viên chấm tay.
 
-Commit trên là HEAD trước commit hoàn thiện bài; hash commit bài nộp xem `git log -1`. Không ghi hash tự tham chiếu của commit chứa chính report này.
+Commit trên chứa implementation và evidence đã kiểm chứng; commit tiếp theo chỉ cập nhật metadata report. Hash commit bài nộp xem `git log -1`.
 
 Đã đọc `docs/RUBRIC.md` và điền đủ tám mục của `REPORT_TEMPLATE.md`. Evidence chính dùng seed 25. `scoreboard_multiseed.json` kiểm chứng thêm seed 26,27; mọi check public PASS trên cả ba seed. Không có dữ liệu hidden để kết luận về hidden score.
 
